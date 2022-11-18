@@ -5,7 +5,7 @@ from genetic import COP, GeneticAlgorithm
 
 from operations import Selection, Mutation, Crossover
 
-CIDS = ["CS106A", "CS106B", "CS103", "CS109", "CS107", "CS111"]
+CIDS = ["CS106A", "CS106B", "CS103", "CS109", "CS107", "CS111", "CS221", "CS231", "CS161", "CS224N"]
 
 COURSES = {
     "CS106A": {
@@ -31,6 +31,22 @@ COURSES = {
     "CS111": {
         "quarters": [0, 1, 2],
         "units": 3,
+    },
+    "CS221": {
+        "quarters": [1, 2],
+        "units": 4
+    },
+    "CS231": {
+        "quarters": [0, 2],
+        "units": 5
+    },
+    "CS161": {
+        "quarters": [1],
+        "units": 4
+    },
+    "CS224N": {
+        "quarters": [1, 2],
+        "units": 5
     }
 }
 
@@ -69,14 +85,15 @@ class ModerateCOP(COP):
                 # take CS106A during fall and CS111 during spring
                 if course == 0 and quarter == 0: preferences += 1
                 if course == len(chrom) - 1 and quarter == 2: preferences += 1
+                if course == 5 and quarter == -1: preferences += 1
 
                 if quarter == 0: aq_units += unit
                 elif quarter == 1: wt_units += unit
                 elif quarter == 2: sp_units += unit
                 if quarter not in COURSES[CIDS[course]]["quarters"]: violations += 1
-        if aq_units >= 18 or aq_units <= 5: violations += 1
-        if wt_units >= 18 or wt_units <= 5: violations += 1
-        if sp_units >= 18 or sp_units <= 5: violations += 1
+        if aq_units >= 18 or aq_units <= 10: violations += 1
+        if wt_units >= 18 or wt_units <= 10: violations += 1
+        if sp_units >= 18 or sp_units <= 10: violations += 1
 
         return preferences - violations
 
@@ -114,11 +131,11 @@ class SimpleCOP(COP):
 
 
 if __name__ == '__main__':
-    cop = ModerateCOP(num_courses=6)
+    cop = ModerateCOP(num_courses=10)
 
     # Use rank selection because fitness could be negative.
     # There are normalization techniques for RW selection, but too lazy :(
-    ga = GeneticAlgorithm(300, 1000, cop, Selection.rank_selection, Crossover.single_point_crossover, Mutation.single_swap_mutate)
+    ga = GeneticAlgorithm(300, 1200, cop, Selection.rank_selection, Crossover.single_point_crossover, Mutation.single_swap_mutate)
 
     ga.run()
 
@@ -129,5 +146,14 @@ if __name__ == '__main__':
         if cop.evaluate_fitness(pop) > best_fitness:
             best_soln = pop
             best_fitness = cop.evaluate_fitness(pop)
+    # print(ga.population)
+    res = []
+    print(f'Best Solution w/ fitness {best_fitness}')
+    d = {}
+    for cid in range(len(best_soln)):
+        d[best_soln[cid]] = d.get(best_soln[cid], []) + [CIDS[cid]]
 
-    print(f'Best Solution w/ fitness {best_fitness} ==> {best_soln}')
+    print(f'Autumn Quarter: {d[0]}')
+    print(f'Winter Quarter: {d[1]}')
+    print(f'Spring Quarter: {d[2]}')
+    print(f'Not Taken: {d[-1]}')

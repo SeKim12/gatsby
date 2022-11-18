@@ -11,9 +11,29 @@ class COP(ABC):
     def evaluate_fitness(self, *args):
         pass
 
+    @abstractmethod
+    def pretty_print(self, *args):
+        pass
+
 
 class GeneticAlgorithm:
-    def __init__(self, N: int, T: int, cop: COP, selection_fn: Any, crossover_fn: Any, mutate_fn: Any, Pc=0.7, Pm=0.1):
+    """
+    Runs the genetic algorithm on the given constrained-optimization problem.
+    """
+
+    def __init__(self, N: int, T: int, cop: COP, selection_fn: Any, crossover_fn: Any, mutate_fn: Any, Pc=0.7, Pm=0.1,
+                 verbose=False):
+        """
+        :param N: size of population
+        :param T: max iterations (generations)
+        :param cop: constrained-optimization problem (must satisfy COP interface above)
+        :param selection_fn: a selection function (must be a Python generator)
+        :param crossover_fn: a crossover function
+        :param mutate_fn: a mutation function
+        :param Pc: probability of crossover
+        :param Pm: probability of mutation
+        :param verbose:
+        """
         self.N = N
         self.T = T
         self.prob_crossover = Pc
@@ -26,17 +46,25 @@ class GeneticAlgorithm:
 
         self.population = []
 
-        self.best_chromosome = None
-        self.best_fitness = float('-inf')
+        self.verbose = verbose
 
     def initialize_population(self):
+        """
+        Initialize N chromosomes in structure defined by COP
+        """
         for _ in range(self.N):
             self.population.append(self.cop.generate_random_config())
 
     def run(self):
+        """
+        Run genetic algorithm for T iterations.
+        """
         self.initialize_population()
 
         for t in range(self.T):
+            if self.verbose:
+                self.evaluate_population()
+                print(f'Starting Generation {t}')
             next_generation = []
             gen = self.select_from(self.population, self.cop)
             while len(next_generation) != len(self.population):
@@ -49,6 +77,24 @@ class GeneticAlgorithm:
 
             self.population = next_generation
 
+        self.evaluate_population(end=True)
+
+    def evaluate_population(self, end=False):
+        """
+        Evalute fitness of each chromosome in population and output best result.
+        If it is used at the end of GA, then pretty prints the chromosome according to COP.
+        """
+        best_fitness = float('-inf')
+        best_soln = None
+        for pop in self.population:
+            fitness = self.cop.evaluate_fitness(pop)
+            if fitness > best_fitness:
+                best_fitness = fitness
+                best_soln = pop
+        if end:
+            self.cop.pretty_print(best_fitness, best_soln)
+        else:
+            print(f'Best Fitness: {best_fitness}, Chromsome: {best_soln}')
 
 # def stochastic_rank(population: List[Any]):
 #     ranked = population[:]
