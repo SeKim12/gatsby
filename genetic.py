@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -22,7 +23,7 @@ class GeneticAlgorithm:
     """
 
     def __init__(self, N: int, T: int, cop: COP, selection_fn: Any, crossover_fn: Any, mutate_fn: Any, Pc=0.7, Pm=0.1,
-                 verbose=False):
+                 max_fitness=float('inf'), verbose=False):
         """
         :param N: size of population
         :param T: max iterations (generations)
@@ -32,6 +33,7 @@ class GeneticAlgorithm:
         :param mutate_fn: a mutation function
         :param Pc: probability of crossover
         :param Pm: probability of mutation
+        :param max_fitness: maximum possible fitness value for early termination
         :param verbose:
         """
         self.N = N
@@ -48,6 +50,14 @@ class GeneticAlgorithm:
 
         self.verbose = verbose
 
+        self.max_fitness = max_fitness
+
+        # Telemetry
+        self.best_fitness = float('-inf')
+        self.best_chromosome = None
+
+        self.fitness_hist = []
+
     def initialize_population(self):
         """
         Initialize N chromosomes in structure defined by COP
@@ -62,9 +72,10 @@ class GeneticAlgorithm:
         self.initialize_population()
 
         for t in range(self.T):
-            if self.verbose:
-                self.evaluate_population()
-                print(f'Starting Generation {t}')
+            self.evaluate_population(verbose=self.verbose)
+            if self.best_fitness >= self.max_fitness:
+                break
+            print(f'Starting Generation {t}')
             next_generation = []
             gen = self.select_from(self.population, self.cop)
             while len(next_generation) != len(self.population):
@@ -79,22 +90,35 @@ class GeneticAlgorithm:
 
         self.evaluate_population(end=True)
 
-    def evaluate_population(self, end=False):
+    def evaluate_population(self, verbose=False, end=False):
         """
         Evalute fitness of each chromosome in population and output best result.
         If it is used at the end of GA, then pretty prints the chromosome according to COP.
         """
-        best_fitness = float('-inf')
-        best_soln = None
+        self.best_fitness = float('-inf')
+        self.best_chromosome = None
         for pop in self.population:
             fitness = self.cop.evaluate_fitness(pop)
-            if fitness > best_fitness:
-                best_fitness = fitness
-                best_soln = pop
+            if fitness > self.best_fitness:
+                self.best_fitness = fitness
+                self.best_chromosome = pop
+
+        self.fitness_hist.append(self.best_fitness)
+
         if end:
-            self.cop.pretty_print(best_fitness, best_soln)
+            self.cop.pretty_print(self.best_fitness, self.best_chromosome)
         else:
-            print(f'Best Fitness: {best_fitness}, Chromsome: {best_soln}')
+            print(f'    Best Fitness: {self.best_fitness}')
+            if verbose:
+                print(f'    Best Chromsome: {self.best_chromosome}')
+
+    def plot_fitness(self):
+        plt.title("Baseline Genetic Algorithm")
+        plt.ylabel("Fitness")
+        plt.xlabel("Generation")
+        plt.plot(range(len(self.fitness_hist)), self.fitness_hist)
+        plt.show()
+
 
 # def stochastic_rank(population: List[Any]):
 #     ranked = population[:]
