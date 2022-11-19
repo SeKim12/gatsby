@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
-from typing import Any
-
+from typing import Any, List, Optional, Deque, Tuple
+from itertools import combinations
+from collections import deque
 
 class COP(ABC):
     @abstractmethod
@@ -23,7 +24,7 @@ class GeneticAlgorithm:
     """
 
     def __init__(self, N: int, T: int, cop: COP, selection_fn: Any, crossover_fn: Any, mutate_fn: Any, Pc=0.7, Pm=0.1,
-                 max_fitness=float('inf'), verbose=False):
+                 max_fitness=float('inf'), tabu=False, verbose=False):
         """
         :param N: size of population
         :param T: max iterations (generations)
@@ -34,6 +35,7 @@ class GeneticAlgorithm:
         :param Pc: probability of crossover
         :param Pm: probability of mutation
         :param max_fitness: maximum possible fitness value for early termination
+        :param tabu: whether to turn on TS
         :param verbose:
         """
         self.N = N
@@ -52,6 +54,8 @@ class GeneticAlgorithm:
 
         self.max_fitness = max_fitness
 
+        self.tabu = tabu
+
         # Telemetry
         self.best_fitness = float('-inf')
         self.best_chromosome = None
@@ -68,10 +72,18 @@ class GeneticAlgorithm:
     def run(self):
         """
         Run genetic algorithm for T iterations.
+        TODO: pass in TS parameters to GA class (Tabu list size, max iterations, etc.)
         """
         self.initialize_population()
 
         for t in range(self.T):
+            if self.tabu:
+                post_tabu = []
+                for p in self.population:
+                    post_tabu.append(self.recursive_tabu_search(p, move=None, best_neighbor=None,
+                                                                best_fitness=float('-inf'), tl=deque(maxlen=30),
+                                                                max_iter=10))
+                self.population = post_tabu
             self.evaluate_population(verbose=self.verbose)
             if self.best_fitness >= self.max_fitness:
                 break
@@ -118,6 +130,50 @@ class GeneticAlgorithm:
         plt.xlabel("Generation")
         plt.plot(range(len(self.fitness_hist)), self.fitness_hist)
         plt.show()
+
+    def recursive_tabu_search(self, cur: List[Any], move: Optional[Tuple[int, int]], best_neighbor: Optional[List[Any]], best_fitness, tl: Deque[Any], max_iter: int):
+        """
+        Recursively applies Tabu Search to current chromosome
+        This is a Lamarckian operation in the sense that it modifies the chromosome and inserts it into the population
+        Currently using First Improving Neighborhood method as outlined in:
+            https://www.researchgate.net/publication/255599657_Analysis_of_neighborhood_generation_and_move_selection_strategies_on_the_performance_of_Tabu_Search
+
+        Procedure:
+            1. Do a pairwise swap of elements in the current chromosome to generate set of neighbors (one by one)
+            2. If we have a fitness-improving neighbor, terminate neighborhood search early, and search the neighbor of that neighbor (FIN approach)
+            3. If not, look through all neighbors. At the end, move to the best neighbor, even if non-improving
+            4. Record the most recent 30 moves to prevent algorithm from cycling (Tabu List)
+
+        :param cur: the current chromosome whose neighbors we are exploring
+        :param move: (i, j) tuple pair indicating the next move (the swap indices that generated cur)
+        :param best_neighbor: best neighbor in neighborhood
+        :param best_fitness: fitness of best neighbor
+        :param tl: tabu list, a Queue w. max_len=30. Deque will automatically pop oldest elements when max_len
+        :param max_iter: max number of iterations to do neighborhood search
+        :return: the improved chromosome
+        """
+        if max_iter == 0:
+            return cur
+        else:
+            for i, j in combinations(range(len(cur)), 2):
+                if tuple(sorted([i, j])) in tl:
+                    continue
+                neighbor = cur[:]
+                neighbor[i], neighbor[j] = neighbor[j], neighbor[i]
+                neighbor_fitness = self.cop.evaluate_fitness(neighbor)
+                if neighbor_fitness > self.cop.evaluate_fitness(cur):
+                    # if improving neighbor, stop searching current neighborhood and move to neighbor's neighborhood
+                    tl.append(tuple(sorted([i, j])))
+                    return self.recursive_tabu_search(neighbor, None, None, float('-inf'), tl, max_iter - 1)
+                else:
+                    # otherwise, keep track of best non-improving neighbor
+                    if neighbor_fitness > best_fitness:
+                        move = tuple(sorted([i, j]))
+                        best_fitness = neighbor_fitness
+                        best_neighbor = neighbor
+            tl.append(move)
+            # search neighborhood of best non-improving neighbor
+            return self.recursive_tabu_search(best_neighbor, None, None, float('-inf'), tl, max_iter - 1)
 
 
 # def stochastic_rank(population: List[Any]):
