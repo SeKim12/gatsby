@@ -1,7 +1,6 @@
 import numpy as np
-import numpy.typing as npt
 
-from genetic import COP, GeneticAlgorithm
+from genetic import COP, GeneticAlgorithm, Chromosome
 from operations import Selection, Mutation, Crossover
 from courseUtil import CourseUtil, CourseBulletin
 
@@ -11,6 +10,7 @@ class Scheduler(COP):
     Four-year scheduler as a constrained-optimization problem
     Access external course data using CourseUtil class
     """
+
     def __init__(self, course_util: CourseUtil):
         self.course_util = course_util
         self.num_courses = self.course_util.get_num_courses()
@@ -22,9 +22,8 @@ class Scheduler(COP):
         for i in range(len(self.cindex_to_cid)):
             self.cid_to_cindex[self.cindex_to_cid[i]] = i
 
-    def generate_random_config(self):
-        """
-        Each chromosome has the following layout
+    def generate_chromosome(self):
+        """Each chromosome has the following layout
         [0, -1, 11, 2, -1, ..., -1]
         where each index corresponds to a unique CS course (cindex_to_cid)
         and the value at each index corresponds to a quarter (0 - 11)
@@ -35,38 +34,39 @@ class Scheduler(COP):
         Therefore, we assign -1 to each course w/ p=0.6 as our initial chromosome
         This will make it more likely that we start off at a feasible region
         """
-        config = []
+        chrom = Chromosome()
         for _ in range(self.num_courses):
             quarter = np.random.randint(-1, self.num_quarters)
             if np.random.random() < 0.6:
                 quarter = -1
-            config.append(quarter)
-        return config
+            chrom.data.append(quarter)
+        self.evaluate_fitness(chrom)
+        return chrom
 
-    def evaluate_fitness(self, chrom: npt.NDArray):
-        """
-        Currently, we only have hard constraints. Therefore, maximum fitness is 0.
-            HC # 1 - course must be offered in assigned quarter
-            HC # 2 - course prerequisites must be satisfied (however, the penalty of violation is lower)
-            HC # 3 - units per quarter must be between 12 <= x <= 18
+    def evaluate_fitness(self, chrom: Chromosome):
+        """Currently, we only have hard constraints. Therefore, maximum fitness is 0.
+        HC # 1 - course must be offered in assigned quarter
+        HC # 2 - course prerequisites must be satisfied (however, the penalty of violation is lower)
+        HC # 3 - units per quarter must be between 12 <= x <= 18
 
         TODO: Design better constraints and more sophisticated fitness/penalty functions
 
         :param chrom: individual chromosome for which we are evaluating its fitness
-        :return: fitness value
+        :return: fitness value (it also updates the fitness value of chrom instance)
         """
         violations = 0
         preferences = 0
 
         quarters = {}
 
-        for cindex in range(len(chrom)):
+        for cindex in range(len(chrom.data)):
             cid = self.cindex_to_cid[cindex]
-            assigned_quarter = chrom[cindex]
+            assigned_quarter = chrom.data[cindex]
 
             qid = ''
 
-            if assigned_quarter == -1: continue
+            if assigned_quarter == -1:
+                continue
 
             if assigned_quarter % 3 == 0:
                 qid = "Aut"
@@ -83,7 +83,7 @@ class Scheduler(COP):
             for prereq in self.course_util.get_prereqs(cid):
                 if prereq in self.cid_to_cindex:
                     pq_cindex = self.cid_to_cindex[prereq]
-                    if chrom[pq_cindex] == -1 or chrom[pq_cindex] > assigned_quarter:
+                    if chrom.data[pq_cindex] == -1 or chrom.data[pq_cindex] > assigned_quarter:
                         violations += 53
 
             quarters[assigned_quarter] = quarters.get(assigned_quarter, 0) + self.course_util.get_max_units(cid)
@@ -93,23 +93,22 @@ class Scheduler(COP):
             if quarters.get(quarter, 0) > 18 or quarters.get(quarter, 0) < 12:
                 violations += 1000
 
-        return preferences - violations
+        chrom.fitness = preferences - violations
+        return chrom.fitness
 
-    def pretty_print(self, fitness, soln):
+    def pretty_print(self, chrom: Chromosome):
         """
         Given a fitness and the solution, destructures the problem-specific chromosome.
         It is called within the Genetic Algorithm class.
 
-        :param fitness: best fitness
-        :param soln: best solution
-        :return:
+        :param chrom: chromosome to print
         """
-        print(f'Best Solution w/ fitness {fitness}')
+        print(f'Best Solution w/ fitness {chrom.fitness}')
         qts = ["AUT1", "WIN1", "SPR1", "AUT2", "WIN2", "SPR2", "AUT3", "WIN3", "SPR3", "AUT4", "WIN4", "SPR4"]
         quarters = {}
-        for cindex in range(len(soln)):
+        for cindex in range(len(chrom.data)):
             cid = self.cindex_to_cid[cindex]
-            assigned_quarter = soln[cindex]
+            assigned_quarter = chrom.data[cindex]
 
             qid = qts[assigned_quarter] if assigned_quarter >= 0 else "UNASSIGNED"
             quarters[qid] = quarters.get(qid, []) + [cid]
@@ -132,7 +131,7 @@ class Scheduler(COP):
 if __name__ == '__main__':
     bulletin = CourseBulletin('courses.json')
     cop = Scheduler(bulletin)
-    ga = GeneticAlgorithm(120, 700, cop, Selection.rank_selection, Crossover.single_point_crossover,
+    ga = GeneticAlgorithm(80, 700, cop, Selection.rank_selection, Crossover.single_point_crossover,
                           Mutation.single_swap_mutate, Pc=0.8, Pm=0.08, max_fitness=0, tabu=True, verbose=False)
     ga.run()
 

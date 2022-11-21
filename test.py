@@ -67,7 +67,7 @@ class ModerateCOP(COP):
     def __init__(self, num_courses: int):
         self.num_courses = num_courses
 
-    def generate_random_config(self):
+    def generate_chromosome(self):
         res = []
         for _ in range(self.num_courses):
             res.append(np.random.randint(-1, 3))
@@ -107,7 +107,7 @@ class SimpleCOP(COP):
     def __init__(self, num_courses: int):
         self.num_courses = num_courses
 
-    def generate_random_config(self):
+    def generate_chromosome(self):
         arr = np.arange(self.num_courses).reshape((3, 2))
         for row in range(len(arr)):
             np.random.shuffle(arr[row, :])

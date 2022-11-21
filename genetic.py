@@ -1,34 +1,63 @@
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Deque, Tuple
+from typing import Any, List, Optional, Deque, Tuple, Callable, List, Iterator
 from itertools import combinations
 from collections import deque
 
+import numpy as np
+
+
+class Chromosome:
+    """Chromosome class used in Genetic Algorithm implementation.
+
+    Attributes:
+        data (List[Any]): the actual array-like encoding of the problem
+        fitness (float): the fitness value of this chromosome
+    """
+    def __init__(self, data=None, fitness=float('-inf')):
+        self.data = data or []
+        self.fitness = fitness
+
+    @staticmethod
+    def copy_of(other):
+        """Returns deep copy of Chromosome class instance. Use as a copy constructor (i.e. Chromosome.copy_of(other))
+        :param other: Chromosome class instance from which we are making the copy
+        :return: deep copy of chromosome
+        """
+        return Chromosome(other.data[:], other.fitness)
+
+
 class COP(ABC):
+    """Constrained Optimization Problem interface"""
+
     @abstractmethod
-    def generate_random_config(self):
+    def generate_chromosome(self) -> Chromosome:
+        """Generate randomly configured chromosome containing actual data and its fitness"""
         pass
 
     @abstractmethod
-    def evaluate_fitness(self, *args):
+    def evaluate_fitness(self, chrom: Chromosome) -> float:
+        """Given a chromosome, evaluates its fitness and update/returns c.fitness"""
         pass
 
     @abstractmethod
-    def pretty_print(self, *args):
+    def pretty_print(self, chrom: Chromosome) -> None:
+        """Given a chromosome, destructures the chromosome into human-readable format"""
         pass
 
 
 class GeneticAlgorithm:
-    """
-    Runs the genetic algorithm on the given constrained-optimization problem.
-    """
+    """Runs the genetic algorithm on the given constrained-optimization problem."""
 
-    def __init__(self, N: int, T: int, cop: COP, selection_fn: Any, crossover_fn: Any, mutate_fn: Any, Pc=0.7, Pm=0.1,
-                 max_fitness=float('inf'), tabu=False, verbose=False):
+    def __init__(self, N: int, T: int, cop: COP,
+                 selection_fn: Callable[[List[Chromosome]], Iterator[Chromosome]],
+                 crossover_fn: Callable[[COP, Chromosome, Chromosome, float], Tuple[Chromosome, Chromosome]],
+                 mutate_fn: Callable[[Chromosome, float], Chromosome],
+                 Pc=0.7, Pm=0.1, max_fitness=float('inf'), tabu=False, verbose=False):
         """
         :param N: size of population
         :param T: max iterations (generations)
-        :param cop: constrained-optimization problem (must satisfy COP interface above)
+        :param cop: constrained optimization problem (must satisfy COP interface above)
         :param selection_fn: a selection function (must be a Python generator)
         :param crossover_fn: a crossover function
         :param mutate_fn: a mutation function
@@ -48,7 +77,7 @@ class GeneticAlgorithm:
         self.crossover = crossover_fn
         self.mutate = mutate_fn
 
-        self.population = []
+        self.population: List[Chromosome] = []
 
         self.verbose = verbose
 
@@ -57,44 +86,45 @@ class GeneticAlgorithm:
         self.tabu = tabu
 
         # Telemetry
-        self.best_fitness = float('-inf')
-        self.best_chromosome = None
+        self.best_chromosome: Optional[Chromosome] = None
 
         self.fitness_hist = []
 
     def initialize_population(self):
-        """
-        Initialize N chromosomes in structure defined by COP
-        """
+        """Initialize N chromosomes in structure defined by COP"""
         for _ in range(self.N):
-            self.population.append(self.cop.generate_random_config())
+            self.population.append(self.cop.generate_chromosome())
 
     def run(self):
-        """
-        Run genetic algorithm for T iterations.
+        """Run genetic algorithm for T iterations.
         TODO: pass in TS parameters to GA class (Tabu list size, max iterations, etc.)
         """
         self.initialize_population()
 
         for t in range(self.T):
+            next_generation = []
+            post_tabu = []
             if self.tabu:
-                post_tabu = []
-                for p in self.population:
-                    post_tabu.append(self.recursive_tabu_search(p, move=None, best_neighbor=None,
-                                                                best_fitness=float('-inf'), tl=deque(maxlen=30),
-                                                                max_iter=10))
-                self.population = post_tabu
+                indices = np.random.choice(len(self.population), size=10, replace=False)
+                for i in indices:
+                    next_generation.append(self.recursive_tabu_search(self.population[i], move=None, best_neighbor=None,
+                                                                      best_fitness=float('-inf'), tl=deque(maxlen=15),
+                                                                      max_iter=20))
+
+                # for p in self.population:
+                # post_tabu.append(self.recursive_tabu_search(p, move=None, best_neighbor=None,
+                #                                             best_fitness=float('-inf'), tl=deque(maxlen=30),
+                #                                             max_iter=10))
+                # self.population = post_tabu
             self.evaluate_population(verbose=self.verbose)
-            if self.best_fitness >= self.max_fitness:
+            if self.best_chromosome.fitness >= self.max_fitness:
                 break
             print(f'Starting Generation {t}')
-            next_generation = []
-            gen = self.select_from(self.population, self.cop)
+            # next_generation = []
+            gen = self.select_from(self.population)
             while len(next_generation) != len(self.population):
                 cp1, cp2 = next(gen), next(gen)
-
-                co1, co2 = self.crossover(cp1, cp2, self.prob_crossover)
-
+                co1, co2 = self.crossover(self.cop, cp1, cp2, self.prob_crossover)
                 next_generation.append(self.mutate(co1, self.prob_mutation))
                 next_generation.append(self.mutate(co2, self.prob_mutation))
 
@@ -107,20 +137,19 @@ class GeneticAlgorithm:
         Evalute fitness of each chromosome in population and output best result.
         If it is used at the end of GA, then pretty prints the chromosome according to COP.
         """
-        self.best_fitness = float('-inf')
+        best_fitness = float('-inf')
         self.best_chromosome = None
         for pop in self.population:
-            fitness = self.cop.evaluate_fitness(pop)
-            if fitness > self.best_fitness:
-                self.best_fitness = fitness
+            if pop.fitness > best_fitness:
+                best_fitness = pop.fitness
                 self.best_chromosome = pop
 
-        self.fitness_hist.append(self.best_fitness)
+        self.fitness_hist.append(best_fitness)
 
         if end:
-            self.cop.pretty_print(self.best_fitness, self.best_chromosome)
+            self.cop.pretty_print(self.best_chromosome)
         else:
-            print(f'    Best Fitness: {self.best_fitness}')
+            print(f'    Best Fitness: {best_fitness}')
             if verbose:
                 print(f'    Best Chromsome: {self.best_chromosome}')
 
@@ -131,7 +160,8 @@ class GeneticAlgorithm:
         plt.plot(range(len(self.fitness_hist)), self.fitness_hist)
         plt.show()
 
-    def recursive_tabu_search(self, cur: List[Any], move: Optional[Tuple[int, int]], best_neighbor: Optional[List[Any]], best_fitness, tl: Deque[Any], max_iter: int):
+    def recursive_tabu_search(self, cur: Chromosome, move: Optional[Tuple[int, int]],
+                              best_neighbor: Optional[Chromosome], best_fitness, tl: Deque[Any], max_iter: int):
         """
         Recursively applies Tabu Search to current chromosome
         This is a Lamarckian operation in the sense that it modifies the chromosome and inserts it into the population
@@ -155,26 +185,25 @@ class GeneticAlgorithm:
         if max_iter == 0:
             return cur
         else:
-            for i, j in combinations(range(len(cur)), 2):
+            for i, j in combinations(range(len(cur.data)), 2):
                 if tuple(sorted([i, j])) in tl:
                     continue
-                neighbor = cur[:]
-                neighbor[i], neighbor[j] = neighbor[j], neighbor[i]
-                neighbor_fitness = self.cop.evaluate_fitness(neighbor)
-                if neighbor_fitness > self.cop.evaluate_fitness(cur):
+                neighbor = Chromosome.copy_of(cur)
+                neighbor.data[i], neighbor.data[j] = neighbor.data[j], neighbor.data[i]
+                self.cop.evaluate_fitness(neighbor)
+                if neighbor.fitness > cur.fitness:
                     # if improving neighbor, stop searching current neighborhood and move to neighbor's neighborhood
                     tl.append(tuple(sorted([i, j])))
                     return self.recursive_tabu_search(neighbor, None, None, float('-inf'), tl, max_iter - 1)
                 else:
                     # otherwise, keep track of best non-improving neighbor
-                    if neighbor_fitness > best_fitness:
+                    if neighbor.fitness > best_fitness:
                         move = tuple(sorted([i, j]))
-                        best_fitness = neighbor_fitness
+                        best_fitness = neighbor.fitness
                         best_neighbor = neighbor
             tl.append(move)
             # search neighborhood of best non-improving neighbor
             return self.recursive_tabu_search(best_neighbor, None, None, float('-inf'), tl, max_iter - 1)
-
 
 # def stochastic_rank(population: List[Any]):
 #     ranked = population[:]
