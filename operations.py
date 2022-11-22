@@ -8,6 +8,9 @@ from genetic import COP, Chromosome
 class Crossover:
     """
     TODO: Add more sophisticated Crossover Methods
+    All static methods must satisfy
+        (cop: COP, cp1: Chromosome, cp2: Chromosome, pc: float) => Tuple[Chromosome, Chromosome]
+
     """
     @staticmethod
     def single_point_crossover(cop: COP, cp1: Chromosome, cp2: Chromosome, pc: float) -> Tuple[Chromosome, Chromosome]:
@@ -81,6 +84,7 @@ class Crossover:
 class Mutation:
     """
     TODO: Add more sophisticated Mutation methods
+    All static methods must satisfy (c: Chromosome) => Chromosome
     """
     @staticmethod
     def single_swap_mutate(c: Chromosome, pm: float) -> Chromosome:
@@ -114,6 +118,7 @@ class Selection:
     """
     TODO: Add more sophisticated selection methods (e.g. Tournament, Elitism)
     Need to look more into stochastic ranking: https://www.cs.bham.ac.uk/~xin/papers/published_tec_sep00_constraint.pdf
+    All static methods must satisfy (population: List[Chromosome]) => Iterator[Chromosome]
     """
     @staticmethod
     def rank_selection(population: List[Chromosome]) -> Iterator[Chromosome]:
