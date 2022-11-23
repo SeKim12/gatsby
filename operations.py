@@ -24,7 +24,8 @@ class Crossover:
             cop.evaluate_fitness(co2)
 
         return co1, co2
-    
+
+    @staticmethod
     def two_point_crossover(cop: COP, cp1: Chromosome, cp2: Chromosome, pc: float) -> Tuple[Chromosome, Chromosome]:
         """
         Two-point Crossover Operation
@@ -39,7 +40,8 @@ class Crossover:
             cop.evaluate_fitness(co2)
 
         return co1, co2
-    
+
+    @staticmethod
     def uniform_crossover(cop: COP, cp1: Chromosome, cp2: Chromosome, pc: float) -> Tuple[Chromosome, Chromosome]:
         """
         Uniform Crossover Operation
@@ -123,6 +125,7 @@ class Mutation:
             c.data[p1], c.data[p2] = c.data[p2], c.data[p1]
         return c
 
+    @staticmethod
     def shuffle_mutate(c: Chromosome, pm: float) -> Chromosome:
         """
         Shuffle Mutation Operation
@@ -134,7 +137,8 @@ class Mutation:
                     j = np.random.choice(range(len(c.data)))
                     c.data[i], c.data[j] = c.data[j], c.data[i]
         return c
-    
+
+    @staticmethod
     def drop_mutate(c: Chromosome, pm: float) -> Chromosome:
         """
         Drop Mutation Operation
@@ -182,6 +186,7 @@ class Selection:
         for i in range(len(ranked)):
             yield ranked[np.random.choice(len(ranked), p=distribution)]
 
+    @staticmethod
     def fitness_selection(population: List[Chromosome]) -> Iterator[Chromosome]:
         """
         Linear Fitness-based Selection
