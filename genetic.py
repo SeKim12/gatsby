@@ -50,7 +50,8 @@ class COP(ABC):
 
 
 class GeneticAlgorithm:
-    """Runs the genetic algorithm on the given constrained-optimization problem."""
+    """Runs the genetic algorithm on the given constrained-optimization problem.
+    TESt"""
 
     def __init__(self, N: int, T: int, cop: COP,
                  selection_fn: Callable[[List[Chromosome]], Iterator[Chromosome]],
