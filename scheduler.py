@@ -89,9 +89,18 @@ class Scheduler(COP):
             quarters[assigned_quarter] = quarters.get(assigned_quarter, 0) + self.course_util.get_max_units(cid)
 
         # HC: units must be between 12 <= x <= 18 per quarter
+        # Edits: removed the minimum unit requirements for now (It doesn't make sense to fill all quarters with CS courses only)
         for quarter in range(self.num_quarters):
-            if quarters.get(quarter, 0) > 18 or quarters.get(quarter, 0) < 12:
+            if quarters.get(quarter, 0) > 18:# or quarters.get(quarter, 0) < 12:
                 violations += 1000
+
+        # Check for required core courses
+        # CS 103, 109, 106A, 106B, 107, 110, 161
+        core_cid = ["CS103", "CS109", "CS106A", "CS106B", "CS107", "CS110", "CS161"]
+        core_cindex = [self.cid_to_cindex[cid] for cid in core_cid]
+        for cindex in core_cindex:
+            if chrom.data[cindex] == -1:
+                violations += 500
 
         chrom.fitness = preferences - violations
         return chrom.fitness
@@ -131,8 +140,8 @@ class Scheduler(COP):
 if __name__ == '__main__':
     bulletin = CourseBulletin('courses.json')
     cop = Scheduler(bulletin)
-    ga = GeneticAlgorithm(120, 700, cop, Selection.rank_selection, Crossover.single_point_crossover,
-                          Mutation.single_swap_mutate, Pc=0.8, Pm=0.08, max_fitness=0, tabu=True, verbose=False)
+    ga = GeneticAlgorithm(80, 700, cop, Selection.rank_selection, Crossover.uniform_crossover,
+                          Mutation.shuffle_mutate, Pc=0.8, Pm=0.08, max_fitness=0, tabu=False, verbose=False)
     ga.run()
 
     ga.plot_fitness()

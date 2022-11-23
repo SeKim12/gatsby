@@ -8,9 +8,6 @@ from genetic import COP, Chromosome
 class Crossover:
     """
     TODO: Add more sophisticated Crossover Methods
-    All static methods must satisfy
-        (cop: COP, cp1: Chromosome, cp2: Chromosome, pc: float) => Tuple[Chromosome, Chromosome]
-
     """
     @staticmethod
     def single_point_crossover(cop: COP, cp1: Chromosome, cp2: Chromosome, pc: float) -> Tuple[Chromosome, Chromosome]:
@@ -26,6 +23,37 @@ class Crossover:
             cop.evaluate_fitness(co1)
             cop.evaluate_fitness(co2)
 
+        return co1, co2
+    
+    def two_point_crossover(cop: COP, cp1: Chromosome, cp2: Chromosome, pc: float) -> Tuple[Chromosome, Chromosome]:
+        """
+        Two-point Crossover Operation
+        """
+        co1, co2 = Chromosome.copy_of(cp1), Chromosome.copy_of(cp2)
+        # co1, co2 = cp1[:], cp2[:]
+        if np.random.random() < pc:
+            cpt1, cpt2 = np.random.randint(len(cp1.data), size = 2)
+            co1.data[cpt1:cpt2+1], co2.data[cpt1:cpt2+1] = co2.data[cpt1:cpt2+1], co1.data[cpt1:cpt2+1]
+
+            cop.evaluate_fitness(co1)
+            cop.evaluate_fitness(co2)
+
+        return co1, co2
+    
+    def uniform_crossover(cop: COP, cp1: Chromosome, cp2: Chromosome, pc: float) -> Tuple[Chromosome, Chromosome]:
+        """
+        Uniform Crossover Operation
+        """
+        co1, co2 = Chromosome.copy_of(cp1), Chromosome.copy_of(cp2)
+        # co1, co2 = cp1[:], cp2[:]
+        if np.random.random() < pc:
+            xsize = np.random.randint(len(cp1.data))
+            cpt = np.random.choice(range(len(cp1.data)), size=xsize)
+            for i in range(len(cp1.data)):
+                if i in cpt:
+                    co1.data[i], co2.data[i] = co2.data[i], co1.data[i]
+            cop.evaluate_fitness(co1)
+            cop.evaluate_fitness(co2)
         return co1, co2
 
     # @staticmethod
@@ -84,7 +112,6 @@ class Crossover:
 class Mutation:
     """
     TODO: Add more sophisticated Mutation methods
-    All static methods must satisfy (c: Chromosome) => Chromosome
     """
     @staticmethod
     def single_swap_mutate(c: Chromosome, pm: float) -> Chromosome:
@@ -94,6 +121,31 @@ class Mutation:
         if np.random.random() < pm:
             p1, p2 = np.random.choice(range(len(c.data)), 2, replace=False)
             c.data[p1], c.data[p2] = c.data[p2], c.data[p1]
+        return c
+
+    def shuffle_mutate(c: Chromosome, pm: float) -> Chromosome:
+        """
+        Shuffle Mutation Operation
+        """
+        if np.random.random() < pm:
+            pmc = 1 / len(c.data)
+            for i in range(len(c.data)):
+                if np.random.random() < pmc:
+                    j = np.random.choice(range(len(c.data)))
+                    c.data[i], c.data[j] = c.data[j], c.data[i]
+        return c
+    
+    def drop_mutate(c: Chromosome, pm: float) -> Chromosome:
+        """
+        Drop Mutation Operation
+        """
+        if np.random.random() < pm:
+            cand = []
+            for i in range(len(c.data)):
+                if c.data[i] != -1:
+                    cand.append(i)
+            drop = np.random.choice(cand)
+            c.data[drop] = -1
         return c
 
     # @staticmethod
@@ -118,7 +170,6 @@ class Selection:
     """
     TODO: Add more sophisticated selection methods (e.g. Tournament, Elitism)
     Need to look more into stochastic ranking: https://www.cs.bham.ac.uk/~xin/papers/published_tec_sep00_constraint.pdf
-    All static methods must satisfy (population: List[Chromosome]) => Iterator[Chromosome]
     """
     @staticmethod
     def rank_selection(population: List[Chromosome]) -> Iterator[Chromosome]:
@@ -131,6 +182,15 @@ class Selection:
         for i in range(len(ranked)):
             yield ranked[np.random.choice(len(ranked), p=distribution)]
 
+    def fitness_selection(population: List[Chromosome]) -> Iterator[Chromosome]:
+        """
+        Linear Fitness-based Selection
+        """
+        ranked = sorted(population, key=lambda x: x.fitness)
+        rank_sum = len(ranked) * (len(ranked) + 1) / 2
+        distribution = [i / rank_sum for i in range(1, len(ranked) + 1)]
+        for i in range(len(ranked)):
+            yield ranked[np.random.choice(len(ranked), p=distribution)]
     # @staticmethod
     # def rw_selection(population: List[Any], cop: COP):
     #     """
