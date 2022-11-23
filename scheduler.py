@@ -140,8 +140,8 @@ class Scheduler(COP):
 if __name__ == '__main__':
     bulletin = CourseBulletin('courses.json')
     cop = Scheduler(bulletin)
-    ga = GeneticAlgorithm(80, 700, cop, Selection.rank_selection, Crossover.uniform_crossover,
-                          Mutation.shuffle_mutate, Pc=0.8, Pm=0.08, max_fitness=0, tabu=False, verbose=False)
+    ga = GeneticAlgorithm(120, 700, cop, Selection.rank_selection, Crossover.uniform_crossover,
+                          Mutation.shuffle_mutate, Pc=0.8, Pm=0.08, max_fitness=0, tabu=True, verbose=False)
     ga.run()
 
     ga.plot_fitness()
