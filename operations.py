@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 
 from typing import List, Any, Tuple, Iterator
-from genetic import COP, Chromosome
+from genetic import COP, Chromosome, TdChromosome
 
 
 class Crossover:
@@ -58,57 +58,68 @@ class Crossover:
             cop.evaluate_fitness(co2)
         return co1, co2
 
-    # @staticmethod
-    # def td_crossover(cp1: npt.NDArray, cp2: npt.NDArray, pc: float):
-    #     """
-    #     Two-dimensional Crossover Operation as described in
-    #     https://downloads.hindawi.com/journals/mpe/2015/906305.pdf
-    #     """
-    #     def horizontal():
-    #         co1 = np.zeros(cp1.shape)
-    #         co2 = np.zeros(cp2.shape)
-    #
-    #         co1[:rr, :] = cp1[:rr, :]
-    #         co2[:rr, :] = cp2[:rr, :]
-    #
-    #         co1[rr:rr + 1, :rc + 1] = cp1[rr:rr + 1, :rc + 1]
-    #         co2[rr:rr + 1, :rc + 1] = cp2[rr:rr + 1, :rc + 1]
-    #
-    #         co1[rr:rr + 1, rc + 1:] = cp2[rr:rr + 1, rc + 1:]
-    #         co2[rr:rr + 1, rc + 1:] = cp1[rr:rr + 1, rc + 1:]
-    #
-    #         co1[rr + 1:, :] = cp2[rr + 1:, :]
-    #         co2[rr + 1:, :] = cp1[rr + 1:, :]
-    #
-    #         return co1, co2
-    #
-    #     def vertical():
-    #         co1 = np.zeros(cp1.shape)
-    #         co2 = np.zeros(cp2.shape)
-    #
-    #         co1[:, :rc] = cp1[:, :rc]
-    #         co2[:, :rc] = cp2[:, :rc]
-    #
-    #         co1[:rr + 1, rc:rc + 1] = cp1[:rr + 1, rc:rc + 1]
-    #         co2[:rr + 1, rc:rc + 1] = cp2[:rr + 1, rc:rc + 1]
-    #
-    #         co1[rr + 1:, rc:rc + 1] = cp2[rr + 1:, rc:rc + 1]
-    #         co2[rr + 1:, rc:rc + 1] = cp1[rr + 1:, rc:rc + 1]
-    #
-    #         co1[:, rc + 1:] = cp2[:, rc + 1:]
-    #         co2[:, rc + 1:] = cp1[:, rc + 1:]
-    #
-    #         return co1, co2
-    #
-    #     if np.random.random() < pc:
-    #         rr = np.random.randint(cp1.shape[0])
-    #         rc = np.random.randint(cp1.shape[1])
-    #
-    #         if np.random.random() > 0.5:
-    #             return horizontal()
-    #         else:
-    #             return vertical()
-    #     return cp1, cp2
+    @staticmethod
+    def td_crossover(cop: COP, cp1: TdChromosome, cp2: TdChromosome, pc: float):
+        """
+        Two-dimensional Crossover Operation as described in
+        https://downloads.hindawi.com/journals/mpe/2015/906305.pdf
+        """
+        def horizontal():
+            co1 = np.zeros((len(cp1.data), len(cp1.data[0])))
+            co2 = np.zeros((len(cp2.data), len(cp2.data[0])))
+
+            cp1_data = np.array(cp1.data)
+            cp2_data = np.array(cp2.data)
+
+            co1[:rr, :] = cp1_data[:rr, :]
+            co2[:rr, :] = cp2_data[:rr, :]
+
+            co1[rr:rr + 1, :rc + 1] = cp1_data[rr:rr + 1, :rc + 1]
+            co2[rr:rr + 1, :rc + 1] = cp2_data[rr:rr + 1, :rc + 1]
+
+            co1[rr:rr + 1, rc + 1:] = cp2_data[rr:rr + 1, rc + 1:]
+            co2[rr:rr + 1, rc + 1:] = cp1_data[rr:rr + 1, rc + 1:]
+
+            co1[rr + 1:, :] = cp2_data[rr + 1:, :]
+            co2[rr + 1:, :] = cp1_data[rr + 1:, :]
+
+            chrom1, chrom2 = TdChromosome(data=co1.tolist()), TdChromosome(data=co2.tolist())
+            return chrom1, chrom2
+        def vertical():
+            co1 = np.zeros((len(cp1.data), len(cp1.data[0])))
+            co2 = np.zeros((len(cp2.data), len(cp2.data[0])))
+
+            cp1_data = np.array(cp1.data)
+            cp2_data = np.array(cp2.data)
+
+            co1[:, :rc] = cp1_data[:, :rc]
+            co2[:, :rc] = cp2_data[:, :rc]
+
+            co1[:rr + 1, rc:rc + 1] = cp1_data[:rr + 1, rc:rc + 1]
+            co2[:rr + 1, rc:rc + 1] = cp2_data[:rr + 1, rc:rc + 1]
+
+            co1[rr + 1:, rc:rc + 1] = cp2_data[rr + 1:, rc:rc + 1]
+            co2[rr + 1:, rc:rc + 1] = cp1_data[rr + 1:, rc:rc + 1]
+
+            co1[:, rc + 1:] = cp2_data[:, rc + 1:]
+            co2[:, rc + 1:] = cp1_data[:, rc + 1:]
+
+            chrom1, chrom2 = TdChromosome(data=co1.tolist()), TdChromosome(data=co2.tolist())
+            return chrom1, chrom2
+
+        co1, co2 = TdChromosome.copy_of(cp1), TdChromosome.copy_of(cp2)
+
+        if np.random.random() < pc:
+            rr = np.random.randint(len(cp1.data))
+            rc = np.random.randint(len(cp1.data[0]))
+
+            if np.random.random() > 0.5:
+                co1, co2 = horizontal()
+            else:
+                co1, co2 = vertical()
+            cop.evaluate_fitness(co1)
+            cop.evaluate_fitness(co2)
+        return co1, co2
 
 
 class Mutation:
@@ -116,17 +127,18 @@ class Mutation:
     TODO: Add more sophisticated Mutation methods
     """
     @staticmethod
-    def single_swap_mutate(c: Chromosome, pm: float) -> Chromosome:
+    def single_swap_mutate(cop: COP, c: Chromosome, pm: float) -> Chromosome:
         """
         Simple Single-swap Mutation Operation
         """
         if np.random.random() < pm:
             p1, p2 = np.random.choice(range(len(c.data)), 2, replace=False)
             c.data[p1], c.data[p2] = c.data[p2], c.data[p1]
+            cop.evaluate_fitness(c)
         return c
 
     @staticmethod
-    def shuffle_mutate(c: Chromosome, pm: float) -> Chromosome:
+    def shuffle_mutate(cop: COP, c: Chromosome, pm: float) -> Chromosome:
         """
         Shuffle Mutation Operation
         """
@@ -136,10 +148,11 @@ class Mutation:
                 if np.random.random() < pmc:
                     j = np.random.choice(range(len(c.data)))
                     c.data[i], c.data[j] = c.data[j], c.data[i]
+            cop.evaluate_fitness(c)
         return c
 
     @staticmethod
-    def drop_mutate(c: Chromosome, pm: float) -> Chromosome:
+    def drop_mutate(cop: COP, c: Chromosome, pm: float) -> Chromosome:
         """
         Drop Mutation Operation
         """
@@ -150,24 +163,27 @@ class Mutation:
                     cand.append(i)
             drop = np.random.choice(cand)
             c.data[drop] = -1
+            cop.evaluate_fitness(c)
         return c
 
-    # @staticmethod
-    # def td_mutate(c: npt.NDArray, pm: float):
-    #     """
-    #     Two-dimensional Mutation Operation as described in
-    #     https://downloads.hindawi.com/journals/mpe/2015/906305.pdf
-    #     """
-    #     if np.random.random() < pm:
-    #         rr = np.random.randint(c.shape[0])
-    #         rc = np.random.randint(c.shape[1])
-    #         rrp, rcp = rr, rc
-    #         while rrp == rr and rcp == rc:
-    #             rrp = np.random.randint(c.shape[0])
-    #             rcp = np.random.randint(c.shape[1])
-    #
-    #         c[rr, rc], c[rrp, rcp] = c[rrp, rcp], c[rr, rc]
-    #     return c
+    @staticmethod
+    def td_mutate(cop: COP, c: TdChromosome, pm: float):
+        """
+        Two-dimensional Mutation Operation as described in
+        https://downloads.hindawi.com/journals/mpe/2015/906305.pdf
+        """
+        if np.random.random() < pm:
+            rr = np.random.randint(len(c.data))
+            rc = np.random.randint(len(c.data[0]))
+            rrp, rcp = rr, rc
+            while rrp == rr and rcp == rc:
+                rrp = np.random.randint(len(c.data))
+                rcp = np.random.randint(len(c.data[0]))
+
+            c.data[rr][rc], c.data[rrp][rcp] = c.data[rrp][rcp], c.data[rr][rc]
+            cop.evaluate_fitness(c)
+
+        return c
 
 
 class Selection:

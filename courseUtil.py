@@ -33,6 +33,7 @@ class Course:
     """
     Course Object from CS221 Scheduling Homework
     """
+
     def __init__(self, info: Dict):
         self.__dict__.update(info)
 
@@ -57,6 +58,7 @@ class CourseBulletin(CourseUtil):
         info = json.loads(open(coursesPath).read())
         for courseInfo in list(info.values()):
             if re.match(r'^CS\d', courseInfo["cid"]):
+                # re.match(re.compile('^CS\d|MATH\d|PHYSICS\d'), courseInfo["cid"]): # ')# r'^CS\d', courseInfo["cid"]))
                 course = Course(courseInfo)
                 self.courses[course.cid] = course
 

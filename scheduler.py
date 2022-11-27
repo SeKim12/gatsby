@@ -141,7 +141,7 @@ if __name__ == '__main__':
     bulletin = CourseBulletin('courses.json')
     cop = Scheduler(bulletin)
     ga = GeneticAlgorithm(120, 700, cop, Selection.rank_selection, Crossover.uniform_crossover,
-                          Mutation.shuffle_mutate, Pc=0.8, Pm=0.08, max_fitness=0, tabu=True, verbose=False)
+                          Mutation.shuffle_mutate, Pc=0.8, Pm=0.08, max_fitness=0, tabu=True, verbose=1)
     ga.run()
 
     ga.plot_fitness()
