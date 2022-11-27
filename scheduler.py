@@ -56,7 +56,6 @@ class Scheduler(COP):
         SC # 2 - core courses are completed as soon as possible
         SC # 3 - 200/300 level CS courses are not taken too early
 
-        TODO: implement input parser in __init__ 
         TODO: implement soft constraints as objective rather than penalty and apply stochastic ranking
         TODO: change the termination condition in genetic.py
 

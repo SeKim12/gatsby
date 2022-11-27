@@ -3,6 +3,7 @@ import numpy.typing as npt
 
 from typing import List, Any, Tuple, Iterator
 from genetic import COP, Chromosome, TdChromosome
+from requirements import Requirements
 
 class Constraint:
     @staticmethod
@@ -62,7 +63,7 @@ class Constraint:
     @staticmethod
     def core_violation(cop: COP, chrom: Chromosome):
         penalty = 0
-        core_cid = ["CS103", "CS109", "CS106A", "CS106B", "CS107", "CS110", "CS161"]
+        core_cid = Requirements.load_core()
         core_cindex = [cop.cid_to_cindex[cid] for cid in core_cid]
         for cindex in core_cindex:
             if chrom.data[cindex] == -1:
@@ -73,27 +74,7 @@ class Constraint:
         # AI / HCI / Systems / Theory / Unspecialized
         # Penalty: 250
         penalty = 0
-        if not cop.track == "AI":
-            return penalty
-
-        # Outsource this part to a different method (track_reqs = load_tracks())
-        track_reqs = {
-            "A" : set(),
-            "B1" : set(),
-            "B2" : set(),
-            "C" : set()
-        }
-        track_reqs["A"].add("CS221")
-        B1 = ["CS224R", "CS228", "CS229", "CS229M", "CS229T", "CS234", "CS238"]
-        for course in B1:
-            track_reqs["B1"].add(course)
-        B2 = ["CS124", "CS224N", "CS224S", "CS224U", "CS224V"]
-        for course in B2:
-            track_reqs["B2"].add(course)
-        C = ["CS157", "CS205L", "CS230", "CS236", "CS257"]
-        for course in C:
-            track_reqs["C"].add(course)
-        # Outsource up to here
+        track_reqs = Requirements.load_track(cop)
         fulfilled = dict()
         for key in track_reqs:
             fulfilled[key] = False
@@ -104,6 +85,9 @@ class Constraint:
                 for key in track_reqs:
                     if cid in track_reqs[key]:
                         fulfilled[key] = True
+        for key in fulfilled:
+            if not fulfilled[key]:
+                penalty += 250
         return penalty
 
 class Objective:
