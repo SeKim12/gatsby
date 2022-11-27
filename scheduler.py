@@ -3,7 +3,8 @@ import numpy as np
 from genetic import COP, GeneticAlgorithm, Chromosome
 from operations import Selection, Mutation, Crossover
 from courseUtil import CourseUtil, CourseBulletin
-
+from constraints import Constraint, Objective
+import argparse
 
 class Scheduler(COP):
     """
@@ -11,11 +12,11 @@ class Scheduler(COP):
     Access external course data using CourseUtil class
     """
 
-    def __init__(self, course_util: CourseUtil):
+    def __init__(self, course_util: CourseUtil, track: str):
         self.course_util = course_util
         self.num_courses = self.course_util.get_num_courses()
         self.num_quarters = 12
-
+        self.track = track
         self.cindex_to_cid = self.course_util.get_courses()
         self.cid_to_cindex = {}
 
@@ -48,8 +49,16 @@ class Scheduler(COP):
         HC # 1 - course must be offered in assigned quarter
         HC # 2 - course prerequisites must be satisfied (however, the penalty of violation is lower)
         HC # 3 - units per quarter must be between 12 <= x <= 18
+        HC # 4 - core courses must be all taken
+        HC # 5 - requirements for the specificed track must be all taken
 
-        TODO: Design better constraints and more sophisticated fitness/penalty functions
+        SC # 1 - Number of CS courses taken each quarter is at most 3
+        SC # 2 - core courses are completed as soon as possible
+        SC # 3 - 200/300 level CS courses are not taken too early
+
+        TODO: implement input parser in __init__ 
+        TODO: implement soft constraints as objective rather than penalty and apply stochastic ranking
+        TODO: change the termination condition in genetic.py
 
         :param chrom: individual chromosome for which we are evaluating its fitness
         :return: fitness value (it also updates the fitness value of chrom instance)
@@ -57,50 +66,15 @@ class Scheduler(COP):
         violations = 0
         preferences = 0
 
-        quarters = {}
+        violations += Constraint.offerings_violation(self, chrom)
+        violations += Constraint.prereq_violation(self, chrom)
+        violations += Constraint.units_violation(self, chrom)
+        violations += Constraint.core_violation(self, chrom)
+        violations += Constraint.track_violation(self, chrom)
 
-        for cindex in range(len(chrom.data)):
-            cid = self.cindex_to_cid[cindex]
-            assigned_quarter = chrom.data[cindex]
-
-            qid = ''
-
-            if assigned_quarter == -1:
-                continue
-
-            if assigned_quarter % 3 == 0:
-                qid = "Aut"
-            elif assigned_quarter % 3 == 1:
-                qid = "Win"
-            elif assigned_quarter % 3 == 2:
-                qid = "Spr"
-
-            # HC: course must be offered in assigned quarter
-            if qid not in self.course_util.get_quarters_offered(cid):
-                violations += 1000
-
-            # HC: prerequisites must be satisfied
-            for prereq in self.course_util.get_prereqs(cid):
-                if prereq in self.cid_to_cindex:
-                    pq_cindex = self.cid_to_cindex[prereq]
-                    if chrom.data[pq_cindex] == -1 or chrom.data[pq_cindex] > assigned_quarter:
-                        violations += 53
-
-            quarters[assigned_quarter] = quarters.get(assigned_quarter, 0) + self.course_util.get_max_units(cid)
-
-        # HC: units must be between 12 <= x <= 18 per quarter
-        # Edits: removed the minimum unit requirements for now (It doesn't make sense to fill all quarters with CS courses only)
-        for quarter in range(self.num_quarters):
-            if quarters.get(quarter, 0) > 18:# or quarters.get(quarter, 0) < 12:
-                violations += 1000
-
-        # Check for required core courses
-        # CS 103, 109, 106A, 106B, 107, 110, 161
-        core_cid = ["CS103", "CS109", "CS106A", "CS106B", "CS107", "CS110", "CS161"]
-        core_cindex = [self.cid_to_cindex[cid] for cid in core_cid]
-        for cindex in core_cindex:
-            if chrom.data[cindex] == -1:
-                violations += 500
+        preferences += Objective.numcourses_preference(self, chrom)
+        preferences += Objective.core_completion_preference(self, chrom)
+        preferences += Objective.course_level_preference(self, chrom)
 
         chrom.fitness = preferences - violations
         return chrom.fitness
@@ -138,10 +112,18 @@ class Scheduler(COP):
 
 
 if __name__ == '__main__':
-    bulletin = CourseBulletin('courses.json')
-    cop = Scheduler(bulletin)
-    ga = GeneticAlgorithm(120, 700, cop, Selection.rank_selection, Crossover.uniform_crossover,
+    parser = argparse.ArgumentParser()
+    parser.add_argument('track', type=str)
+    args = parser.parse_args()
+    valid_tracks = ["AI", "HCI", "Systems", "Theory", "Unspecialized"]
+    if not args.track in valid_tracks:
+        print("Invalid Track! Choose from {AI, HCI, Systems, Theory, Unspecialized}.")
+    else:
+        print("Chosen Track:", args.track)
+        bulletin = CourseBulletin('courses.json')
+        cop = Scheduler(bulletin, args.track)
+        ga = GeneticAlgorithm(120, 700, cop, Selection.rank_selection, Crossover.uniform_crossover,
                           Mutation.shuffle_mutate, Pc=0.8, Pm=0.08, max_fitness=0, tabu=True, verbose=1)
-    ga.run()
+        ga.run()
 
-    ga.plot_fitness()
+        ga.plot_fitness()
