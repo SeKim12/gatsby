@@ -64,16 +64,17 @@ class Scheduler(COP):
         """
         violations = 0
         preferences = 0
+        # TODO: Optimize multiple iterations of nested loops
+        violations += Constraint.combined_violation(self, chrom)
+        # violations += Constraint.offerings_violation(self, chrom)
+        # violations += Constraint.prereq_violation(self, chrom)
+        # violations += Constraint.units_violation(self, chrom)
+        # violations += Constraint.core_violation(self, chrom)
+        # violations += Constraint.track_violation(self, chrom)
 
-        violations += Constraint.offerings_violation(self, chrom)
-        violations += Constraint.prereq_violation(self, chrom)
-        violations += Constraint.units_violation(self, chrom)
-        violations += Constraint.core_violation(self, chrom)
-        violations += Constraint.track_violation(self, chrom)
-
-        preferences += Objective.numcourses_preference(self, chrom)
-        preferences += Objective.core_completion_preference(self, chrom)
-        preferences += Objective.course_level_preference(self, chrom)
+        # preferences += Objective.numcourses_preference(self, chrom)
+        # preferences += Objective.core_completion_preference(self, chrom)
+        # preferences += Objective.course_level_preference(self, chrom)
 
         chrom.fitness = preferences - violations
         return chrom.fitness

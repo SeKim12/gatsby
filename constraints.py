@@ -4,8 +4,75 @@ import numpy.typing as npt
 from typing import List, Any, Tuple, Iterator
 from genetic import COP, Chromosome, TdChromosome
 from requirements import Requirements
+import collections
 
 class Constraint:
+    @staticmethod
+    def combined_violation(cop, chrom: Chromosome):
+        penalty = 0
+        # records units taken per quarter
+        quarters = dict()
+        # track requirements
+        track_reqs = Requirements.load_track(cop)
+        # dictionary keeping track of whether the track requirements are fulfilled
+        fulfilled = dict()
+        num_courses = collections.defaultdict(int)
+        for key in track_reqs:
+            fulfilled[key] = False
+        for cindex in range(len(chrom.data)):
+            cid = cop.cindex_to_cid[cindex]
+            assigned_quarter = chrom.data[cindex]
+            qid = ''
+            if assigned_quarter == -1:
+                continue
+            # Updating num_courses in the relevant qtr
+            num_courses[assigned_quarter] += 1
+            if assigned_quarter % 3 == 0:
+                qid = "Aut"
+            elif assigned_quarter % 3 == 1:
+                qid = "Win"
+            elif assigned_quarter % 3 == 2:
+                qid = "Spr"
+            # Offerings Violations
+            if qid not in cop.course_util.get_quarters_offered(cid):
+                penalty += 1000
+            # Prereq Violations
+            for prereq in cop.course_util.get_prereqs(cid):
+                if prereq in cop.cid_to_cindex:
+                    pq_cindex = cop.cid_to_cindex[prereq]
+                    if chrom.data[pq_cindex] == -1 or chrom.data[pq_cindex] > assigned_quarter:
+                        penalty += 53
+            # Unit counting
+            quarters[assigned_quarter] = quarters.get(assigned_quarter, 0) + cop.course_util.get_max_units(cid)
+            # Updating track requirements fulfilled
+            for key in track_reqs:
+                if cid in track_reqs[key]:
+                    fulfilled[key] = True
+                    break
+            # Course Level Preference
+            if cid[2] != "1":
+                if assigned_quarter < 6:
+                    penalty += 5
+        # Units violation
+        for quarter in range(cop.num_quarters):
+            if quarters.get(quarter, 0) > 18:
+                penalty += 1000
+            if num_courses[quarter] > 3:
+                penalty += 11
+        # Core courses violation
+        core_cid = Requirements.load_core()
+        core_cindex = [cop.cid_to_cindex[cid] for cid in core_cid]
+        for cindex in core_cindex:
+            if chrom.data[cindex] == -1:
+                penalty += 500
+            elif chrom.data[cindex] > 6:
+                penalty += 5
+        # Track violation
+        for key in fulfilled:
+            if not fulfilled[key]:
+                penalty += 250
+        return penalty
+
     @staticmethod
     def offerings_violation(cop: COP, chrom: Chromosome):
         penalty = 0
@@ -94,6 +161,17 @@ class Objective:
     @staticmethod
     def numcourses_preference(cop:COP, chrom: Chromosome):
         reward = 0
+        courses = collections.defaultdict(int)
+        for cindex in range(len(chrom.data)):
+            cid = cop.cindex_to_cid[cindex]
+            assigned_quarter = chrom.data[cindex]
+            if assigned_quarter == -1:
+                continue
+            courses[assigned_quarter] += 1
+        for qtr in courses:
+            if courses[qtr] <= 3:
+                continue
+            reward -= 17
         return reward
     
     @staticmethod
@@ -102,5 +180,12 @@ class Objective:
 
     @staticmethod
     def course_level_preference(cop: COP, chrom: Chromosome):
-        return 0
+        reward = 0
+        for cindex in range(len(chrom.data)):
+            cid = cop.cindex_to_cid[cindex]
+            assigned_quarter = chrom.data[cindex]
+            if cid[2] == "2" or cid[2] == "3":
+                if assigned_quarter < 6:
+                    reward -= 1
+        return reward
     
