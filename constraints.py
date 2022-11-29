@@ -40,7 +40,7 @@ class Constraint:
             for prereq in cop.course_util.get_prereqs(cid):
                 if prereq in cop.cid_to_cindex:
                     pq_cindex = cop.cid_to_cindex[prereq]
-                    if chrom.data[pq_cindex] == -1 or chrom.data[pq_cindex] > assigned_quarter:
+                    if chrom.data[pq_cindex] == -1 or chrom.data[pq_cindex] >= assigned_quarter:
                         penalty += 53
             # Unit counting
             quarters[assigned_quarter] = quarters.get(assigned_quarter, 0) + cop.course_util.get_max_units(cid)
