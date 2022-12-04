@@ -10,6 +10,7 @@ Example:
         >>> ga.run()
 
     For implementation of COP, check `model/scheduer.py`
+
 """
 
 import math
@@ -63,8 +64,11 @@ class Chromosome(ABC):
     @abstractmethod
     def interweave1d(self, start_1, end_1, other: 'Chromosome', start_2, end_2) -> Tuple['Chromosome', 'Chromosome']:
         """Equivalent to self.data[start_1: end_1] <-> other.data[start_2: end_2].
+
         This is to make Chromosome slicing independent of whether data is a Python List or an NDArray.
-        Note that this modifies the data of `other` as well."""
+        Note that this modifies the data of `other` as well.
+
+        """
         pass
 
     @abstractmethod
@@ -84,7 +88,10 @@ class COP(ABC):
     @abstractmethod
     def generate_chromosome(self) -> Chromosome:
         """Generate randomly configured Chromosomes containing actual data and its fitness.
-        The actual structure of the Chromosome is thus defined by COP implementations."""
+
+        The actual structure of the Chromosome is thus defined by COP implementations.
+
+        """
         pass
 
     @abstractmethod
@@ -99,7 +106,29 @@ class COP(ABC):
 
 
 class Gatsby:
-    """Genetic Algorithms augmented with Tabu Search."""
+    """Genetic Algorithms augmented with Tabu Search.
+
+    Attributes:
+        N: Size of population.
+        T: Maximum number of generations.
+        cop: Constrained Optimization Problem.
+        selection_fn: Selection genetic operator function that returns a generator type.
+        crossover_fn: Crossover genetic operator function that returns two modified Chromosomes.
+        mutate_fn: Mutation genetic operator function that returns the modified Chromosome.
+        Pc: Probability of crossover.
+        Pm: Probability of mutation.
+        tabu: Boolean indicator of whether Tabu Search is enabled.
+        which_tabu: Type of tabu search to be used. Currently only `swap` and `flip` are implemented.
+        tabu_list_len: Length of Tabu List, which is a Recency List.
+        tabu_max_iter: Number of iterations to run Tabu Search.
+        tabu_max_explore: Number of non-improving neighbors to explore in Tabu Search.
+            i.e. O(tabu_max_iter * tabu_max_explore) searches will be performed for each Chromosome.
+        max_fitness: Maximum fitness a Chromosome could achieve, upon which the algorithm terminates.
+        max_repeat: Maximum number of similar (~=0.2%) fitness values allowed until early termination.
+        max_time_s: Maximum time (in seconds) that Gatsby can run for until early termination.
+        verbose: For more detailed progress reports.
+
+    """
     def __init__(self,
                  N: int,
                  T: int,
@@ -110,7 +139,7 @@ class Gatsby:
                  Pc=0.7,
                  Pm=0.1,
                  tabu=False,
-                 which_tabu: Literal['swap', 'flip'] = 'flip',
+                 which_tabu='flip',
                  tabu_list_len=25,
                  tabu_max_iter=30,
                  tabu_max_explore=100,
@@ -118,27 +147,6 @@ class Gatsby:
                  max_repeat=4,
                  max_time_s=300,
                  verbose=1):
-        """
-        Attributes:
-            N: Size of population.
-            T: Maximum number of generations.
-            cop: Constrained Optimization Problem.
-            selection_fn: Selection genetic operator function that returns a generator type.
-            crossover_fn: Crossover genetic operator function that returns two modified Chromosomes.
-            mutate_fn: Mutation genetic operator function that returns the modified Chromosome.
-            Pc: Probability of crossover.
-            Pm: Probability of mutation.
-            tabu: Boolean indicator of whether Tabu Search is enabled.
-            which_tabu: Type of tabu search to be used. Currently only `swap` and `flip` are implemented.
-            tabu_list_len: Length of Tabu List, which is a Recency List.
-            tabu_max_iter: Number of iterations to run Tabu Search.
-            tabu_max_explore: Number of non-improving neighbors to explore in Tabu Search.
-                i.e. O(tabu_max_iter * tabu_max_explore) searches will be performed for each Chromosome.
-            max_fitness: Maximum fitness a Chromosome could achieve, upon which the algorithm terminates.
-            max_repeat: Maximum number of similar (~=0.2%) fitness values allowed until early termination.
-            max_time_s: Maximum time (in seconds) that Gatsby can run for until early termination.
-            verbose: For more detailed progress reports.
-        """
         self._N = N
         self._T = T
         self._cop = cop
@@ -196,6 +204,7 @@ class Gatsby:
             - Maximum fitness is reached.
             - Converged to a similar fitness value.
             - Algorithm has been running for too long.
+
         """
         self._initialize_population()
         conv, count = self._max_fitness, 0
@@ -275,12 +284,16 @@ class Gatsby:
 
         self.ttl_runtime = time.perf_counter() - algo_start
 
-        self._cop.pretty_print(self.best_chromosome)
+        if self._verbose >= 0:
+            self._cop.pretty_print(self.best_chromosome)
 
     def _evaluate_population(self):
         """Evaluate best Chromosome **per-generation**, and update best Chromosome overall if needed.
+
         The best fitness value is appended to the history. If this function is not called,
-        Fitness values must be explicitly added to maintain full record."""
+        Fitness values must be explicitly added to maintain full record.
+
+        """
         best_fitness, best_chromosome = float('-inf'), None
         for pop in self._population:
             if pop.fitness > best_fitness:
@@ -312,7 +325,8 @@ class Gatsby:
         plt.show()
 
     def _flip_tabu(self, cur: Chromosome) -> Chromosome:
-        """
+        """Perform flip tabu search on the current Chromosome.
+
         Args:
             cur: The Chromosome to improve using Tabu Search.
 
@@ -330,6 +344,7 @@ class Gatsby:
 
         Note also that our Tabu Search is Lamarckian, i.e. it replaces the `cur` Chromosome in the population,
         Even though the fitness may be worse-off.
+
         """
         tabu_list = deque(maxlen=self._tabu_len)
         current = cur
@@ -356,7 +371,8 @@ class Gatsby:
         return current
 
     def _swap_tabu(self, cur: Chromosome) -> Chromosome:
-        """
+        """Perform swap tabu on current Chromosome.
+
         Args:
             cur: The Chromosome to improve using Tabu Search.
 
@@ -367,6 +383,7 @@ class Gatsby:
         This tends to result in faster iterations in early generations.
         However, this lacks diversity compared to Flip Tabu Search, and can get stuck
         during later generations.
+
         """
         def random_combination():
             """Random (i, j) combination of i, j in len(cur.data)"""

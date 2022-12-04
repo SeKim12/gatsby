@@ -6,6 +6,7 @@ Check `add_local_constraint` and `add_global_constraint` for more information.
 
 Generally speaking, COPs wanting to use the Gatsby algorithm should also define
 their own chromosome structure that implements the `gatsby.Chromosome` interface.
+
 """
 
 from typing import Optional, Callable, Any, Dict, List, Union
@@ -26,6 +27,7 @@ def to_qid(q: int) -> str:
 
     Returns:
         A quarter ID in ["Aut", "Win", "Spr"]
+
     """
     if q == -1:
         return "NA"
@@ -33,17 +35,18 @@ def to_qid(q: int) -> str:
 
 
 class SchedChrom1d(gatsby.Chromosome):
-    """Chromosome implementation used in the Scheduler COP"""
-    def __init__(self):
-        """
-        The structure of the Chromosome is [-1, 0, 1, 11, ...], where each index corresponds to a unique CS course,
-        and each value corresponds to a quarter `in` [-1, 12) that the CS course will be scheduled.
-        Note that -1 indicates that the course is not taken.
+    """Chromosome implementation used in the Scheduler COP
 
-        Attributes:
-            data: A NDArray encoding of Course Schedule data.
-            fitness: Fitness value of Chromosome.
-        """
+    The structure of the Chromosome is [-1, 0, 1, ...], where each index corresponds to a unique CS course,
+    and each value corresponds to a quarter in [-1, 12) that the CS course will be scheduled.
+    Note that -1 indicates that the course is not taken.
+
+    Attributes:
+        data: A NDArray encoding of Course Schedule data.
+        fitness: Fitness value of Chromosome.
+
+    """
+    def __init__(self):
         self._data: Optional[npt.NDArray] = None
         self._fitness = float('-inf')
 
@@ -69,6 +72,7 @@ class SchedChrom1d(gatsby.Chromosome):
         Examples:
             >>> c.destructure()
             {-1: ["CS193P", ...], 0: ["CS106A", ...]}
+
         """
         qts = {}
         for idx in range(self._data.shape[0]):
@@ -82,6 +86,8 @@ class SchedChrom1d(gatsby.Chromosome):
         return clone
 
     def interweave1d(self, start_1, end_1, other: 'SchedChrom1d', start_2, end_2):
+        end_1 = len(self._data) if end_1 == -1 else end_1
+        end_2 = len(other.data) if end_2 == -1 else end_2
         self._data[start_1: end_1], other._data[start_2: end_2] = \
             other._data[start_2: end_2], self._data[start_1: end_1]
         return self, other
@@ -92,31 +98,31 @@ class SchedChrom1d(gatsby.Chromosome):
 
 
 class Scheduler(gatsby.COP):
-    """Scheduler COP to be solved using Gatsby Algorithm."""
-    def __init__(self, course_util: util.CourseParser, track: str):
-        """
-        Attributes:
-            course_util: CourseParser implementation to process Course Information.
-            num_courses: Number of courses to schedule across 4 years.
-            num_quarters: Number of quarters.
-            track: String value of track.
-            track_reqs: Dictionary of track requirements by part.
-            core_reqs: Set of core requirements.
-            domain: [-1, 12)
-            cids: List of string course IDs used to map index to cid.
-            idx: Dictionary of course IDs to corresponding index.
-            loc_cstrt_cnt: Number of local constraints.
-            loc_cstrt_idx: Map unique index to local constraint name.
-            loc_cstrt_fns: Map unique index to local constraint functions.
-            loc_cstrt_pen: Map unique index to local constraint penalties.
-            collectors: List of collector functions.
-            states: Accumulate local states to be used by global constraints.
-            glob_cstrt_cnt: Number of global constraints.
-            glob_cstrt_idx: Map unique index to global constraint name.
-            glob_cstrt_fns: Map unique index to global constraint function.
-            glob_cstrt_pen: Map unique index to global constraint penalties.
+    """Scheduler COP to be solved using Gatsby Algorithm.
 
-        """
+    Attributes:
+        course_util: CourseParser implementation to process Course Information.
+        num_courses: Number of courses to schedule across 4 years.
+        num_quarters: Number of quarters.
+        track: String value of track.
+        track_reqs: Dictionary of track requirements by part.
+        core_reqs: Set of core requirements.
+        domain: [-1, 12)
+        cids: List of string course IDs used to map index to cid.
+        idx: Dictionary of course IDs to corresponding index.
+        loc_cstrt_cnt: Number of local constraints.
+        loc_cstrt_idx: Map unique index to local constraint name.
+        loc_cstrt_fns: Map unique index to local constraint functions.
+        loc_cstrt_pen: Map unique index to local constraint penalties.
+        collectors: List of collector functions.
+        states: Accumulate local states to be used by global constraints.
+        glob_cstrt_cnt: Number of global constraints.
+        glob_cstrt_idx: Map unique index to global constraint name.
+        glob_cstrt_fns: Map unique index to global constraint function.
+        glob_cstrt_pen: Map unique index to global constraint penalties.
+
+    """
+    def __init__(self, course_util: util.CourseParser, track: str):
         self._course_util = course_util
         self._num_courses = self._course_util.get_num_courses()
         self._num_quarters = 12
@@ -134,7 +140,7 @@ class Scheduler(gatsby.COP):
         self._loc_cstrt_fns: Dict[int, Callable[[SchedChrom1d, int], Any]] = {}
         self._loc_cstrt_pen = {}
 
-        self._collectors: List[Callable[[SchedChrom1d, int], Any]] = []
+        self._collectors: List[Callable[[SchedChrom1d, int, Dict[Any, Any]], Any]] = []
         self._states = defaultdict(lambda: defaultdict(int))
 
         self._glob_cstrt_cnt = 0
@@ -150,6 +156,7 @@ class Scheduler(gatsby.COP):
 
         Returns:
             unique index, e.g. 53
+
         """
         return self._idx[cid]
 
@@ -161,6 +168,7 @@ class Scheduler(gatsby.COP):
 
         Returns:
             cid, e.g. "CS106A"
+
         """
         return self._cids[idx]
 
@@ -169,8 +177,8 @@ class Scheduler(gatsby.COP):
         return self._domain
 
     def generate_chromosome(self):
-        """Intuitively, a 4-year schedule is not going to include a majority of CS courses.
-        Therefore, we initially drop 60% of courses for each Chromosome."""
+        # Intuitively, a feasible schedule is not going to utilize the majority of CS courses.
+        # Therefore, we randomly drop 60% of classes.
         cr = SchedChrom1d()
         cr.data = np.random.randint(self._num_quarters, size=self._num_courses)
         cr.data[np.random.rand(*cr.data.shape) < 0.6] = -1
@@ -202,6 +210,7 @@ class Scheduler(gatsby.COP):
         Refer to `_hc_quarter` to see how local constraint functions are defined,
         `add_default_constraints` to see how constraints are added,
         and `evaluate_fitness` to see how they are used.
+
         """
         self._loc_cstrt_idx[self._loc_cstrt_cnt] = name
         self._loc_cstrt_fns[self._loc_cstrt_cnt] = fn
@@ -209,7 +218,7 @@ class Scheduler(gatsby.COP):
         self._loc_cstrt_cnt += 1
         return self._loc_cstrt_cnt
 
-    def _add_collector(self, key: str, fn: Callable[[SchedChrom1d, int], Any]):
+    def _add_collector(self, key: str, fn: Callable[[SchedChrom1d, int, Dict[Any, Any]], Any]):
         """Add collector functions to the COP.
 
         Args:
@@ -223,11 +232,12 @@ class Scheduler(gatsby.COP):
         Refer to `_units_collector` to see how collectors are defined,
         `add_global_constraint` to see how they are added,
         and `evaluate_fitness` to see how they are used.
+
         """
         assert key not in self._states
         self._collectors.append(fn)
 
-    def add_global_constraint(self, name: str, cstrt_fn: Callable[[SchedChrom1d], Any], pen, coll_fn: Optional[Callable[[SchedChrom1d, int], Any]], key=''):
+    def add_global_constraint(self, name: str, cstrt_fn: Callable[[SchedChrom1d], Any], pen, coll_fn: Optional[Callable[[SchedChrom1d, int, Dict[Any, Any]], Any]], key=''):
         """Add global constraint functions and penalties to the COP.
 
         Args:
@@ -241,10 +251,12 @@ class Scheduler(gatsby.COP):
         Examples of this would be unit constraints or track requirement constraints.
         Each global constraint takes in the entire Chromosome.
         It retrieves accumulated data collected by its associated collector from the state space.
+        Collectors must pass in a reference to `state` dict as a parameter.
 
         Refer to `_glob_hc_unit_count` to see how global constraint functions are defined,
         `add_default_constraints` to see how constraints are added,
         and `evaluate_fitness` to see how they are used.
+
         """
         self._glob_cstrt_idx[self._glob_cstrt_cnt] = name
         self._glob_cstrt_fns[self._glob_cstrt_cnt] = cstrt_fn
@@ -260,6 +272,7 @@ class Scheduler(gatsby.COP):
         """Add default Hard and Soft Constraints.
 
         A detailed explanation of each constraint is provided in `evaluate_fitness`.
+
         """
         self.add_global_constraint("HC: Unit Overload Constraint", self._glob_hc_unit_count, 1000, self._units_collector, "unit_count")
         self.add_global_constraint("HC: Track Requirement Constraint", self._glob_hc_track, 250, self._track_collector, "track")
@@ -270,15 +283,16 @@ class Scheduler(gatsby.COP):
         self.add_local_constraint("HC: Unsatisfied Prerequisite Constraint", self._hc_prereq, 53)
         self.add_local_constraint("SC: Taking Hard Courses Too Early Constraint", self._sc_course_sequence, 5)
 
-    def _units_collector(self, chrom: SchedChrom1d, idx: int):
+    def _units_collector(self, chrom: SchedChrom1d, idx: int, state: Dict[Any, Any]):
         """Store unit count per each quarter in state space.
 
         Args:
             chrom: Chromosome being processed.
             idx: Current local index of `chrom` being processed.
+
         """
         qtr, cid = chrom.data[idx], self._to_cid(idx)
-        self._states["unit_count"][qtr] += self._course_util.get_max_units(cid)
+        state["unit_count"][qtr] += self._course_util.get_max_units(cid)
 
     def _glob_hc_unit_count(self, _):
         """Count number of quarters in which unit count is greater than 18."""
@@ -287,15 +301,16 @@ class Scheduler(gatsby.COP):
             count += int(self._states["unit_count"][qtr] > 18)
         return count
 
-    def _course_collector(self, chrom: SchedChrom1d, idx: int):
+    def _course_collector(self, chrom: SchedChrom1d, idx: int, state: Dict[Any, Any]):
         """Store course count per each quarter in state space.
 
         Args:
             chrom: Chromosome being processed.
             idx: Current local index of `chrom` being processed.
+
         """
         qtr, cid = chrom.data[idx], self._to_cid(idx)
-        self._states["course_count"][qtr] += 1
+        state["course_count"][qtr] += 1
 
     def _glob_sc_course_num(self, _):
         """Count number of quarters in which course count is greater than 3."""
@@ -304,18 +319,19 @@ class Scheduler(gatsby.COP):
             count += int(self._states["course_count"][qtr] > 3)
         return count
 
-    def _track_collector(self, _, idx: int):
+    def _track_collector(self, _, idx: int, state: Dict[Any, Any]):
         """Store whether each part of the track is satisfied state space.
 
         Args:
             idx: Current local index of `chrom` being processed.
+
         """
         cid = self._to_cid(idx)
         for k in self._track_reqs:
             if cid in self._track_reqs[k]:
-                self._states["track"][k] = 1
+                state["track"][k] = 1
             else:
-                self._states["track"][k] = self._states["track"][k]
+                state["track"][k] = state["track"][k]
 
     def _glob_hc_track(self, _):
         """Count number of track parts that were not satisfied"""
@@ -330,6 +346,7 @@ class Scheduler(gatsby.COP):
 
         Note that core classes taken later are penalized, but by a smaller amount.
         Normalize each count so that penalty differs.
+
         """
         count = 0
         for core in self._core_reqs:
@@ -346,6 +363,7 @@ class Scheduler(gatsby.COP):
         Args:
             chrom: Chromosome being processed.
             idx: Current local index of `chrom` being processed.
+
         """
         c = 0
         qid, cid = to_qid(chrom.data[idx]), self._to_cid(idx)
@@ -359,6 +377,7 @@ class Scheduler(gatsby.COP):
         Args:
             chrom: Chromosome being processed.
             idx: Current local index of `chrom` being processed.
+
         """
         c = 0
         cid = self._to_cid(idx)
@@ -376,6 +395,7 @@ class Scheduler(gatsby.COP):
         Args:
             chrom: Chromosome being processed.
             idx: Current local index of `chrom` being processed.
+
         """
         qtr, cid = chrom.data[idx], self._to_cid(idx)
         return int(cid[2] != '1' and qtr < 6)
@@ -405,6 +425,7 @@ class Scheduler(gatsby.COP):
         Collect information from local search procedure. Finally, evaluate all global constraint violations.
 
         Note that the state MUST BE cleared after each evaluation.
+
         """
         penalty = 0
 
@@ -417,7 +438,7 @@ class Scheduler(gatsby.COP):
                 penalty += count * self._loc_cstrt_pen[constraint]
 
             for collector in self._collectors:
-                collector(chrom, idx)
+                collector(chrom, idx, self._states)
 
         for constraint in self._glob_cstrt_idx:
             count = self._glob_cstrt_fns[constraint](chrom)

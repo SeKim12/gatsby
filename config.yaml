@@ -1,0 +1,14 @@
+params:
+  N: 120
+  T: 1000
+  Pc: 0.8
+  Pm: 0.08
+  tabu: True
+  which_tabu: "flip"
+  tabu_list_len: 25
+  tabu_max_iter: 30
+  tabu_max_explore: 100
+  max_fitness: 0
+  max_repeat: 50
+  max_time_s: 300
+  verbose: -1
