@@ -41,6 +41,7 @@ class GATSTelemetry:
         params: Must be loaded from a config YAML file using `load_config()`
 
     """
+
     def __init__(self, cop: gatsby.COP):
         self.cop = cop
         self.params = None
@@ -60,12 +61,12 @@ class GATSTelemetry:
         if not path:
             raise RuntimeError("Please specify path to configuration file!")
 
-        with open(path, 'r') as file:
-            self.params = yaml.safe_load(file)['params']
+        with open(path, "r") as file:
+            self.params = yaml.safe_load(file)["params"]
 
-        self.params['selection_fn'] = genops.selection_rank
-        self.params['crossover_fn'] = genops.crossover_uniform
-        self.params['mutate_fn'] = genops.mutate_shuffle
+        self.params["selection_fn"] = genops.selection_rank
+        self.params["crossover_fn"] = genops.crossover_uniform
+        self.params["mutate_fn"] = genops.mutate_shuffle
 
     def dump_config(self):
         """Dump current configuration."""
@@ -88,7 +89,7 @@ class GATSTelemetry:
             None, sets selection function.
 
         """
-        self.params['selection_fn'] = fn
+        self.params["selection_fn"] = fn
         return self
 
     def add_crossover_fn(self, fn: Any):
@@ -107,7 +108,7 @@ class GATSTelemetry:
             None, sets crossover function.
 
         """
-        self.params['crossover'] = fn
+        self.params["crossover"] = fn
         return self
 
     def add_mutate_fn(self, fn: Any):
@@ -126,10 +127,16 @@ class GATSTelemetry:
             None, sets mutation function.
 
         """
-        self.params['mutate_fn'] = fn
+        self.params["mutate_fn"] = fn
         return self
 
-    def tune_params(self, target_params: List[str], ranges: List[List[Any]], kw_lsts=None, iterations=1):
+    def tune_params(
+        self,
+        target_params: List[str],
+        ranges: List[List[Any]],
+        kw_lsts=None,
+        iterations=1,
+    ):
         """Change parameters across different ranges and collect generation, time, and fitness at convergence.
 
         If there are 2 target_params, each with a range of 3 values, and iterations == 2,
@@ -157,7 +164,9 @@ class GATSTelemetry:
 
         """
         if not self.params:
-            raise RuntimeError("\nParameters Not Set! Use `load_config()` with config file path")
+            raise RuntimeError(
+                "\nParameters Not Set! Use `load_config()` with config file path"
+            )
 
         print("\nNOTE: If Not Explicitly Set, Default Genops Will Be Used\n")
 
@@ -174,11 +183,11 @@ class GATSTelemetry:
         for vals in product(*ranges):
             for i in range(len(target_params)):
                 self.params[target_params[i]] = vals[i]
-                print(f'{target_params[i]} := {stringify(vals[i])}', end=' // ')
+                print(f"{target_params[i]} := {stringify(vals[i])}", end=" // ")
 
             avg_gen_conv, avg_fitness, avg_time_conv = 0, 0, 0
             for j in range(iterations):
-                print(f'Running iteration {j}')
+                print(f"Running iteration {j}")
                 ga = gatsby.Gatsby(cop=self.cop, **self.params)
                 ga.run()
                 avg_gen_conv += len(ga.fitness_hist)
@@ -189,21 +198,29 @@ class GATSTelemetry:
             avg_time_conv /= iterations
             avg_fitness /= iterations
 
-            per_param[vals] = {'generations': avg_gen_conv, 'time': avg_time_conv, 'fitness': avg_fitness}
+            per_param[vals] = {
+                "generations": avg_gen_conv,
+                "time": avg_time_conv,
+                "fitness": avg_fitness,
+            }
 
-        print(f'\n*****************************************************************************'
-              f'\nRan Gatsby With The Following Parameters For {iterations} Iterations Each:')
+        print(
+            f"\n*****************************************************************************"
+            f"\nRan Gatsby With The Following Parameters For {iterations} Iterations Each:"
+        )
         for i in range(len(target_params)):
-            print(f'\n-->{target_params[i]} := {ranges[i]}')
-        print(f'****************************************************************************')
+            print(f"\n-->{target_params[i]} := {ranges[i]}")
+        print(
+            f"****************************************************************************"
+        )
 
         for kw in per_param:
-            print(f'-->{[target_params[i] + " := " + stringify(kw[i]) for i in range(len(kw))]} : '
-                  f'\n----> Average Generations Until Convergence : {per_param[kw]["generations"]}'
-                  f'\n----> Average Time Until Convergence : {per_param[kw]["time"]}'
-                  f'\n----> Average Maximum Fitness Achieved : {per_param[kw]["fitness"]}'
-                  f'\n')
+            print(
+                f'-->{[target_params[i] + " := " + stringify(kw[i]) for i in range(len(kw))]} : '
+                f'\n----> Average Generations Until Convergence : {per_param[kw]["generations"]}'
+                f'\n----> Average Time Until Convergence : {per_param[kw]["time"]}'
+                f'\n----> Average Maximum Fitness Achieved : {per_param[kw]["fitness"]}'
+                f"\n"
+            )
 
         return per_param
-
-

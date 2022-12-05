@@ -11,7 +11,9 @@ import numpy as np
 from gats.algorithm import gatsby
 
 
-def crossover_single_point(cop: gatsby.COP, cp1: gatsby.Chromosome, cp2: gatsby.Chromosome, pc: float):
+def crossover_single_point(
+    cop: gatsby.COP, cp1: gatsby.Chromosome, cp2: gatsby.Chromosome, pc: float
+):
     """Perform Single-point Crossover with Probability `pc`.
 
     Choose random crossover point and interweave.
@@ -37,7 +39,9 @@ def crossover_single_point(cop: gatsby.COP, cp1: gatsby.Chromosome, cp2: gatsby.
     return co1, co2
 
 
-def crossover_two_point(cop: gatsby.COP, cp1: gatsby.Chromosome, cp2: gatsby.Chromosome, pc: float):
+def crossover_two_point(
+    cop: gatsby.COP, cp1: gatsby.Chromosome, cp2: gatsby.Chromosome, pc: float
+):
     """Perform Two-point Crossover with Probability `pc`.
 
     Choose two random crossover points and interweave [cpt1: cpt2 + 1).
@@ -63,7 +67,9 @@ def crossover_two_point(cop: gatsby.COP, cp1: gatsby.Chromosome, cp2: gatsby.Chr
     return co1, co2
 
 
-def crossover_uniform(cop: gatsby.COP, cp1: gatsby.Chromosome, cp2: gatsby.Chromosome, pc: float):
+def crossover_uniform(
+    cop: gatsby.COP, cp1: gatsby.Chromosome, cp2: gatsby.Chromosome, pc: float
+):
     """Perform Uniform Crossover with Probability `pc`.
 
     Choose multiple crossover points at uniform and interweave.
@@ -92,7 +98,9 @@ def crossover_uniform(cop: gatsby.COP, cp1: gatsby.Chromosome, cp2: gatsby.Chrom
     return co1, co2
 
 
-def mutate_single_swap(cop: gatsby.COP, c: gatsby.Chromosome, pm: float) -> gatsby.Chromosome:
+def mutate_single_swap(
+    cop: gatsby.COP, c: gatsby.Chromosome, pm: float
+) -> gatsby.Chromosome:
     """Perform Single-swap Mutation with Probability `pm`.
 
     Choose two points at random and swap.
@@ -113,7 +121,9 @@ def mutate_single_swap(cop: gatsby.COP, c: gatsby.Chromosome, pm: float) -> gats
     return c
 
 
-def mutate_shuffle(cop: gatsby.COP, c: gatsby.Chromosome, pm: float) -> gatsby.Chromosome:
+def mutate_shuffle(
+    cop: gatsby.COP, c: gatsby.Chromosome, pm: float
+) -> gatsby.Chromosome:
     """Perform Shuffle Mutation with Probability `pm`.
 
     Choose random points and shuffle.
@@ -152,7 +162,9 @@ def mutate_drop(cop: gatsby.COP, c: gatsby.Chromosome, pm: float) -> gatsby.Chro
 
     """
     if np.random.random() < pm:
-        drop = np.random.choice([c.data[i] for i in range(len(c.data)) if c.data[i] != -1])
+        drop = np.random.choice(
+            [c.data[i] for i in range(len(c.data)) if c.data[i] != -1]
+        )
         c.data[drop] = -1
         cop.evaluate_fitness(c)
     return c

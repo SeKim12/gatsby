@@ -46,9 +46,10 @@ class SchedChrom1d(gatsby.Chromosome):
         fitness: Fitness value of Chromosome.
 
     """
+
     def __init__(self):
         self._data: Optional[npt.NDArray] = None
-        self._fitness = float('-inf')
+        self._fitness = float("-inf")
 
     @property
     def fitness(self):
@@ -85,11 +86,13 @@ class SchedChrom1d(gatsby.Chromosome):
         clone.fitness = self._fitness
         return clone
 
-    def interweave1d(self, start_1, end_1, other: 'SchedChrom1d', start_2, end_2):
+    def interweave1d(self, start_1, end_1, other: "SchedChrom1d", start_2, end_2):
         end_1 = len(self._data) if end_1 == -1 else end_1
         end_2 = len(other.data) if end_2 == -1 else end_2
-        self._data[start_1: end_1], other._data[start_2: end_2] = \
-            other._data[start_2: end_2], self._data[start_1: end_1]
+        self._data[start_1:end_1], other._data[start_2:end_2] = (
+            other._data[start_2:end_2],
+            self._data[start_1:end_1],
+        )
         return self, other
 
     def swap(self, i, j):
@@ -122,6 +125,7 @@ class Scheduler(gatsby.COP):
         glob_cstrt_pen: Map unique index to global constraint penalties.
 
     """
+
     def __init__(self, course_util: util.CourseParser, track: str):
         self._course_util = course_util
         self._num_courses = self._course_util.get_num_courses()
@@ -189,12 +193,18 @@ class Scheduler(gatsby.COP):
         """Return a string representation of all constraints defined in the COP"""
         res = []
         for k in self._loc_cstrt_idx:
-            res.append(f'LOCAL => {self._loc_cstrt_idx[k]}: Index {k}, Penalty {self._loc_cstrt_pen[k]}')
+            res.append(
+                f"LOCAL => {self._loc_cstrt_idx[k]}: Index {k}, Penalty {self._loc_cstrt_pen[k]}"
+            )
         for k in self._glob_cstrt_idx:
-            res.append(f'GLOBAL => {self._glob_cstrt_idx[k]}: Index {k}, Penalty {self._glob_cstrt_pen[k]}')
-        return '\n'.join(res)
+            res.append(
+                f"GLOBAL => {self._glob_cstrt_idx[k]}: Index {k}, Penalty {self._glob_cstrt_pen[k]}"
+            )
+        return "\n".join(res)
 
-    def add_local_constraint(self, name: str, fn: Callable[[SchedChrom1d, int], Any], pen: Union[int, float]):
+    def add_local_constraint(
+        self, name: str, fn: Callable[[SchedChrom1d, int], Any], pen: Union[int, float]
+    ):
         """Add local constraint functions and penalties to the COP.
 
         Args:
@@ -218,7 +228,9 @@ class Scheduler(gatsby.COP):
         self._loc_cstrt_cnt += 1
         return self._loc_cstrt_cnt
 
-    def _add_collector(self, key: str, fn: Callable[[SchedChrom1d, int, Dict[Any, Any]], Any]):
+    def _add_collector(
+        self, key: str, fn: Callable[[SchedChrom1d, int, Dict[Any, Any]], Any]
+    ):
         """Add collector functions to the COP.
 
         Args:
@@ -237,7 +249,14 @@ class Scheduler(gatsby.COP):
         assert key not in self._states
         self._collectors.append(fn)
 
-    def add_global_constraint(self, name: str, cstrt_fn: Callable[[SchedChrom1d], Any], pen, coll_fn: Optional[Callable[[SchedChrom1d, int, Dict[Any, Any]], Any]], key=''):
+    def add_global_constraint(
+        self,
+        name: str,
+        cstrt_fn: Callable[[SchedChrom1d], Any],
+        pen,
+        coll_fn: Optional[Callable[[SchedChrom1d, int, Dict[Any, Any]], Any]],
+        key="",
+    ):
         """Add global constraint functions and penalties to the COP.
 
         Args:
@@ -274,14 +293,40 @@ class Scheduler(gatsby.COP):
         A detailed explanation of each constraint is provided in `evaluate_fitness`.
 
         """
-        self.add_global_constraint("HC: Unit Overload Constraint", self._glob_hc_unit_count, 1000, self._units_collector, "unit_count")
-        self.add_global_constraint("HC: Track Requirement Constraint", self._glob_hc_track, 250, self._track_collector, "track")
-        self.add_global_constraint("HC: Core Requirement Constraint", self._glob_hc_core, 500, None)
-        self.add_global_constraint("SC: Course Overload Constraint", self._glob_sc_course_num, 11, self._course_collector, "course_count")
+        self.add_global_constraint(
+            "HC: Unit Overload Constraint",
+            self._glob_hc_unit_count,
+            1000,
+            self._units_collector,
+            "unit_count",
+        )
+        self.add_global_constraint(
+            "HC: Track Requirement Constraint",
+            self._glob_hc_track,
+            250,
+            self._track_collector,
+            "track",
+        )
+        self.add_global_constraint(
+            "HC: Core Requirement Constraint", self._glob_hc_core, 500, None
+        )
+        self.add_global_constraint(
+            "SC: Course Overload Constraint",
+            self._glob_sc_course_num,
+            11,
+            self._course_collector,
+            "course_count",
+        )
 
-        self.add_local_constraint("HC: Quarter Offering Constraint", self._hc_quarter, 1000)
-        self.add_local_constraint("HC: Unsatisfied Prerequisite Constraint", self._hc_prereq, 53)
-        self.add_local_constraint("SC: Taking Hard Courses Too Early Constraint", self._sc_course_sequence, 5)
+        self.add_local_constraint(
+            "HC: Quarter Offering Constraint", self._hc_quarter, 1000
+        )
+        self.add_local_constraint(
+            "HC: Unsatisfied Prerequisite Constraint", self._hc_prereq, 53
+        )
+        self.add_local_constraint(
+            "SC: Taking Hard Courses Too Early Constraint", self._sc_course_sequence, 5
+        )
 
     def _units_collector(self, chrom: SchedChrom1d, idx: int, state: Dict[Any, Any]):
         """Store unit count per each quarter in state space.
@@ -398,7 +443,7 @@ class Scheduler(gatsby.COP):
 
         """
         qtr, cid = chrom.data[idx], self._to_cid(idx)
-        return int(cid[2] != '1' and qtr < 6)
+        return int(cid[2] != "1" and qtr < 6)
 
     def evaluate_fitness(self, chrom: SchedChrom1d):
         """Currently, we only have hard constraints. Therefore, maximum fitness is 0.
@@ -452,4 +497,4 @@ class Scheduler(gatsby.COP):
     def pretty_print(self, chrom: SchedChrom1d):
         d = chrom.destructure()
         for i in range(-1, 12):
-            print(f'Quarter {i} ==> {[self._to_cid(j) for j in d.get(i, [])]}')
+            print(f"Quarter {i} ==> {[self._to_cid(j) for j in d.get(i, [])]}")
