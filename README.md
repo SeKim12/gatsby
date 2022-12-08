@@ -33,7 +33,7 @@ Refer to documentation in `telemetry/wrapper.py` for more information.
 .
 ├── data
 │   ├── sample_courses.json              # modified json file from CS 221 scheduling assignment
-├── gats                    # Documentation files (alternatively `doc`)
+├── gats                    
 │   ├── algorithm              
 │   │   ├── gatsby.py                    # main algorithm and interfaces
 │   │   ├── genops.py                    # impl. of different genetic operators
